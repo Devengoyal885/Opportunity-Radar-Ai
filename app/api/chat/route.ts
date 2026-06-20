@@ -19,7 +19,9 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Chat failed';
 
-    if (message.includes('GEMINI_API_KEY') || message.includes('API key')) {
+    const missingKeyError = message === 'GEMINI_API_KEY is not configured';
+
+    if (missingKeyError) {
       return NextResponse.json({
         success: true,
         demo: true,

@@ -36,8 +36,10 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'AI matching failed';
 
-    // Fallback: return opportunities with simulated scores
-    if (message.includes('GEMINI_API_KEY') || message.includes('API key')) {
+    const missingKeyError = message === 'GEMINI_API_KEY is not configured';
+
+    // Fallback: return opportunities with simulated scores only when the key is absent.
+    if (missingKeyError) {
       const fallback = opportunities.map((opp) => ({
         ...opp,
         matchScore: Math.floor(Math.random() * 50) + 40,

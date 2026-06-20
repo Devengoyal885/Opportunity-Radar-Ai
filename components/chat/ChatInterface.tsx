@@ -54,18 +54,20 @@ export function ChatInterface() {
       });
 
       const data = await response.json();
+      const replyContent = data.reply || data.error || 'Sorry, I could not process your request.';
       const aiMsg: ChatMessage = {
         id: `msg-${Date.now()}-ai`,
         role: 'assistant',
-        content: data.reply || 'Sorry, I could not process your request.',
+        content: replyContent,
         timestamp: new Date().toISOString(),
       };
       addChatMessage(aiMsg);
-    } catch {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
       addChatMessage({
         id: `msg-error-${Date.now()}`,
         role: 'assistant',
-        content: '❌ Failed to connect to AI. Please check your connection and API key.',
+        content: `❌ Failed to connect to AI. ${message}`,
         timestamp: new Date().toISOString(),
       });
     } finally {

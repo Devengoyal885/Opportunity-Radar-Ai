@@ -274,14 +274,11 @@ export function OpportunityCard({
               </span>
             </div>
           )}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (opportunity.applicationLink) {
-                window.open(opportunity.applicationLink, '_blank', 'noopener,noreferrer');
-              }
-            }}
+          <a
+            href={opportunity.applicationLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
             className="btn-primary"
             style={{
               padding: '8px 16px',
@@ -290,10 +287,11 @@ export function OpportunityCard({
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
+              textDecoration: 'none',
             }}
           >
             Apply now <ExternalLink size={11} />
-          </button>
+          </a>
         </div>
       </div>
     </motion.div>

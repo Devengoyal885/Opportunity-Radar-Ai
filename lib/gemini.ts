@@ -1,6 +1,5 @@
 import { Opportunity, UserProfile } from '@/types';
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
 interface GeminiPart {
@@ -13,6 +12,12 @@ interface GeminiContent {
 }
 
 async function callGemini(contents: GeminiContent[], systemInstruction?: string) {
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+
+  if (!geminiApiKey) {
+    throw new Error('GEMINI_API_KEY is not configured');
+  }
+
   const body: Record<string, unknown> = {
     contents,
     generationConfig: {
@@ -29,15 +34,29 @@ async function callGemini(contents: GeminiContent[], systemInstruction?: string)
     };
   }
 
-  const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+  const response = await fetch(GEMINI_API_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${geminiApiKey}`,
+    },
     body: JSON.stringify(body),
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Gemini API error: ${response.status} - ${error}`);
+    const text = await response.text();
+    let errorMessage = text;
+
+    try {
+      const errorJson = JSON.parse(text);
+      if (errorJson?.error?.message) {
+        errorMessage = errorJson.error.message;
+      }
+    } catch {
+      // Keep raw text if JSON parsing fails.
+    }
+
+    throw new Error(`Gemini API error: ${response.status} - ${errorMessage}`);
   }
 
   const data = await response.json();
