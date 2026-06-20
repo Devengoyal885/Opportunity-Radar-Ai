@@ -1,104 +1,194 @@
-﻿# 🏗 Architecture — Opportunity Radar AI
+# 🏗 Architecture — Opportunity Radar AI
 
-A high-level view of the application structure, data flow, and AI integration.
+A high-level view of the application's structure, data flow, and AI integration.
+
+**Live app:** [opportunity-radar-ai.netlify.app/dashboard](https://opportunity-radar-ai.netlify.app/dashboard)
+**Repository:** [github.com/Devengoyal885/Opportunity-Radar-Ai](https://github.com/Devengoyal885/Opportunity-Radar-Ai)
 
 ---
 
-## 📦 System overview
+## 📖 Table of Contents
+
+- [System Overview](#-system-overview)
+- [Directory Responsibility](#-directory-responsibility)
+- [Data Flow](#-data-flow)
+- [Key Modules](#-key-modules)
+- [State Management](#-state-management)
+- [External Services](#-external-services)
+- [Deployment Topology](#-deployment-topology)
+- [Notes & Limitations](#-notes--limitations)
+
+---
+
+## 📦 System Overview
 
 ```
-Browser (client)
-├─ Next.js App Router
-│  ├─ Pages: /dashboard, /opportunities, /saved, /chat, /calendar, /profile
-│  ├─ Components: Sidebar, Header, OpportunityCard, ChatInterface
-│  └─ Zustand store: opportunities, filters, userProfile, theme, chatMessages, notifications
-
-Server (Next.js API routes)
-├─ /api/opportunities
-├─ /api/chat
-├─ /api/match
-├─ /api/scrape
-└─ /api/notifications
-
-External services
-├─ Google Gemini 1.5 Flash
-└─ Anakin API
+┌──────────────────────────────────────────────────────────────────┐
+│                         Browser (Client)                         │
+│                                                                    │
+│   Next.js App Router (React 19 + TypeScript)                      │
+│   ├─ Pages: /dashboard  /opportunities  /saved                    │
+│   │          /chat      /calendar       /profile                  │
+│   ├─ Components: Sidebar, Header, OpportunityCard, ChatInterface  │
+│   └─ Zustand store: opportunities, filters, userProfile,          │
+│                      theme, chatMessages, notifications           │
+└───────────────────────────┬────────────────────────────────────-─┘
+                             │ fetch (JSON over HTTPS)
+┌───────────────────────────▼────────────────────────────────────-─┐
+│                  Server — Next.js API Routes                      │
+│                                                                    │
+│   /api/opportunities   /api/chat     /api/match                   │
+│   /api/scrape          /api/notifications                         │
+└───────────┬────────────────────────────────────┬─────────────────┘
+            │                                     │
+┌───────────▼────────────┐           ┌────────────▼────────────────┐
+│   Google Gemini 1.5     │           │        Anakin API           │
+│   Flash (AI matching,   │           │   (live opportunity         │
+│   chat, extraction)     │           │    scraping)                │
+└──────────────────────────┘           └──────────────────────────┘
 ```
 
 ---
 
-## 🧩 Directory responsibility
+## 🧩 Directory Responsibility
 
-- `app/` — page routes, root layout, and global styles
-- `components/` — reusable UI components and page-specific widgets
-- `lib/` — AI clients, scraping helpers, matching utilities, and store
-- `data/` — seeded sample opportunities
-- `types/` — TypeScript interfaces
+| Directory | Responsibility |
+|---|---|
+| `app/` | Page routes, root layout, global styles, and API route handlers |
+| `components/` | Reusable UI components and page-specific widgets |
+| `lib/` | AI clients, scraping helpers, matching utilities, and the global store |
+| `data/` | Seeded sample opportunity dataset |
+| `types/` | Shared TypeScript interfaces |
 
 ---
 
-## 🔄 Data flow
+## 🔄 Data Flow
 
-### 1. Dashboard start
+### 1. Dashboard load
+
+```
+Client → GET /api/opportunities ─┐
+                                  ├─→ Zustand store updated
+Client → GET /api/notifications ─┘        │
+                                           ▼
+                          Dashboard widgets render
+```
 
 - Client loads `/dashboard`
-- Calls `/api/opportunities` and `/api/notifications`
-- Updates Zustand store with responses
-- Components render opportunities and widgets
+- Calls `/api/opportunities` and `/api/notifications` in parallel
+- Updates the Zustand store with both responses
+- Components render opportunity cards, stats, and deadline widgets
 
 ### 2. Profile matching
 
-- User posts profile to `/api/match`
-- Server calls `generateMatchScores()` in `lib/gemini.ts`
-- Returns ranked opportunities with AI scores
-- Client re-renders sorted matches
+```
+User profile → POST /api/match → generateMatchScores() (lib/gemini.ts)
+                                        │
+                                        ▼
+                     Ranked opportunities with matchScore + matchReason
+                                        │
+                                        ▼
+                          Client re-renders sorted matches
+```
 
 ### 3. Radar AI chat
 
-- User posts message to `/api/chat`
-- Server uses `chatWithAssistant()` and sends history to Gemini
-- Gemini responds with markdown-ready text
-- Client displays the chat reply
+```
+User message → POST /api/chat → chatWithAssistant() (lib/gemini.ts)
+                                        │
+                          Conversation + opportunity context → Gemini
+                                        │
+                                        ▼
+                         Markdown-ready reply → ChatInterface
+```
 
 ### 4. Scraping workflow
 
-- Client posts URL to `/api/scrape`
-- Server scrapes content via Anakin
-- Server extracts opportunities via Gemini
-- Extracted items are returned for review or ingestion
+```
+URL → POST /api/scrape → scrapeUrl() (lib/anakin.ts)
+                                │
+                                ▼
+              extractOpportunitiesFromMarkdown() (lib/gemini.ts)
+                                │
+                                ▼
+              Structured opportunities returned for review/ingestion
+```
 
 ---
 
-## 🔧 Key modules
+## 🔧 Key Modules
 
-### `lib/gemini.ts`
+### `lib/gemini.ts` — AI integration layer
 
-- `callGemini()` — core Gemini request wrapper
-- `generateMatchScores()` — profile-based scoring prompt
-- `chatWithAssistant()` — assistant prompt builder
-- `extractOpportunitiesFromMarkdown()` — structured extraction
+| Function | Role |
+|---|---|
+| `callGemini()` | Core request wrapper around the Gemini API |
+| `generateMatchScores()` | Profile-based scoring prompt and response parsing |
+| `chatWithAssistant()` | Builds the assistant prompt with opportunity context |
+| `extractOpportunitiesFromMarkdown()` | Structured extraction from scraped content |
 
-### `lib/anakin.ts`
+### `lib/anakin.ts` — Scraping client
 
-- `scrapeUrl()` — fetch markdown from a URL
-- `crawlSite()` — optional site crawling helper
-- `searchOpportunities()` — optional search helper
+| Function | Role |
+|---|---|
+| `scrapeUrl()` | Fetches markdown content from a URL |
+| `crawlSite()` | Optional multi-page site crawling |
+| `searchOpportunities()` | Optional search-based discovery |
 
-### `lib/matching.ts`
+### `lib/matching.ts` — Deadline & scoring utilities
 
-- `computeUrgency()` — sets `isUrgent` based on deadline
-- `getDaysUntilDeadline()` / `getDeadlineStatus()` — deadline helpers
-- Sort and filter helpers for opportunity lists
+| Function | Role |
+|---|---|
+| `computeUrgency()` | Sets `isUrgent` based on the deadline window |
+| `getDaysUntilDeadline()` / `getDeadlineStatus()` | Deadline math helpers |
+| Sort/filter helpers | Power the opportunities list and dashboard ordering |
 
-### `lib/notifications.ts`
+### `lib/notifications.ts` — Alerts engine
 
-- Generates deadline alerts and daily digest notifications
+- Generates deadline alerts and a daily digest notification set
 
 ---
 
-## 📍 Notes
+## 🏪 State Management
 
-- `app/api/opportunities/route.ts` uses an in-memory `opportunitiesDB`
+The app uses a single **Zustand** store (`lib/store.ts`) split into persisted and transient slices.
+
+| Persisted (localStorage) | Transient (in-memory) |
+|---|---|
+| `savedIds` | `opportunities` |
+| `userProfile` | `filters` |
+| `chatMessages` | `isScrapingActive` |
+| `notifications` | |
+| `theme` | |
+
+---
+
+## 🌐 External Services
+
+| Service | Used for | Required env var |
+|---|---|---|
+| **Google Gemini 1.5 Flash** | Match scoring, chat assistant, content extraction | `GEMINI_API_KEY` |
+| **Anakin API** | Live opportunity scraping | `ANAKIN_API_KEY` (optional) |
+
+Both integrations degrade gracefully to demo/fallback behavior when their respective keys are missing — see [`prompt.md`](./prompt.md#4-fallback-behavior).
+
+---
+
+## ☁️ Deployment Topology
+
+```
+GitHub repo ──push──▶ Netlify build (npm run build) ──▶ opportunity-radar-ai.netlify.app
+```
+
+- Hosted on **Netlify**, configured via `netlify.toml`
+- Environment variables (`GEMINI_API_KEY`, `ANAKIN_API_KEY`) are set in the Netlify dashboard for production
+- Next.js API routes run as serverless functions at the edge of the deployment
+
+---
+
+## 📍 Notes & Limitations
+
+- `app/api/opportunities/route.ts` uses an **in-memory** `opportunitiesDB`
 - `data/seed-opportunities.json` is loaded on server start
-- State is not persisted across server restart in the current implementation
-- Production should use a persistent database or storage layer
+- State is **not persisted** across server restarts in the current implementation
+- Production deployments should replace the in-memory store with a persistent database (e.g. Postgres, MongoDB, or a managed service)

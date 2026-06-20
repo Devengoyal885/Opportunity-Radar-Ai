@@ -1,180 +1,207 @@
-﻿# 🔧 Implementation Guide — Opportunity Radar AI
+# 🔧 Implementation Guide — Opportunity Radar AI
 
-A developer reference for the app's architecture, AI integration, and implementation patterns.
+A developer reference for the app's dependencies, type system, API routes, AI integration, and state management.
 
----
-
-## 📦 Main dependencies
-
-| Package | Purpose |
-|---|---|
-| `next` | App Router, server routes |
-| `react` / `react-dom` | UI rendering |
-| `typescript` | type safety |
-| `zustand` | client state with persistence |
-| `framer-motion` | animations |
-| `lucide-react` | icons |
-| `date-fns` | deadline and date logic |
-| `react-hot-toast` | toast notifications |
-| `react-markdown` | render Gemini assistant output |
-| `tailwindcss` | utility styling |
+**Live app:** [opportunity-radar-ai.netlify.app/dashboard](https://opportunity-radar-ai.netlify.app/dashboard)
 
 ---
 
-## 🗂 Type system
+## 📖 Table of Contents
 
-Shared interfaces are defined in `types/index.ts`.
-
-### Core models
-
-- `Opportunity`
-  - id, title, organization, description, eligibility, deadline
-  - category, tags, applicationLink
-  - optional prize/stipend/location/logoUrl
-  - `isRemote`, `matchScore`, `matchReason`, `isUrgent`
-
-- `UserProfile`
-  - skills, interests, educationLevel, careerGoals, preferredCategories, location
-
-- `ChatMessage`
-  - id, role, content, timestamp
-
-- `Notification`
-  - deadline alerts, daily digest, match notifications
-
-- `FilterState`
-  - categories, deadline window, remote filter, minMatchScore, search, sortBy
+- [Main Dependencies](#-main-dependencies)
+- [Type System](#-type-system)
+- [API Routes](#-api-routes)
+- [AI Integration](#-ai-integration)
+- [Data Handling](#️-data-handling)
+- [Client State](#-client-state)
+- [UI Components](#-ui-components)
+- [Data Flow Summary](#-data-flow-summary)
+- [Deployment Notes](#️-deployment-notes)
 
 ---
 
-## 🌐 API routes
+## 📦 Main Dependencies
+
+| Package | Version | Purpose |
+|---|---|---|
+| `next` | 16.x | App Router, server routes, build/runtime |
+| `react` / `react-dom` | 19.x | UI rendering |
+| `typescript` | 5.x | Type safety |
+| `zustand` | 5.x | Client state with persistence |
+| `framer-motion` | 12.x | Animations |
+| `lucide-react` | 1.x | Icons |
+| `date-fns` | 4.x | Deadline and date logic |
+| `react-hot-toast` | 2.x | Toast notifications |
+| `react-markdown` | 10.x | Renders Gemini assistant output |
+| `tailwindcss` | 4.x | Utility-first styling |
+
+---
+
+## 🗂 Type System
+
+Shared interfaces live in `types/index.ts`.
+
+### `Opportunity`
+
+| Field | Type | Notes |
+|---|---|---|
+| `id`, `title`, `organization`, `description` | `string` | Core listing data |
+| `eligibility` | `string` | Who can apply |
+| `deadline` | `string` (ISO) | Used for urgency calculations |
+| `category` | `string` | One of the defined category enums |
+| `tags` | `string[]` | Free-form keyword tags |
+| `applicationLink` | `string` | External application URL |
+| `prize` / `stipend` / `location` / `logoUrl` | `string?` | Optional metadata |
+| `isRemote` | `boolean?` | Remote eligibility flag |
+| `matchScore` / `matchReason` | `number? / string?` | Populated by AI matching |
+| `isUrgent` | `boolean?` | Computed via `computeUrgency()` |
+
+### `UserProfile`
+
+`skills`, `interests`, `educationLevel`, `careerGoals`, `preferredCategories`, `location`
+
+### `ChatMessage`
+
+`id`, `role`, `content`, `timestamp`
+
+### `Notification`
+
+Deadline alerts, daily digest, and match notifications
+
+### `FilterState`
+
+`categories`, deadline window, remote filter, `minMatchScore`, `search`, `sortBy`
+
+---
+
+## 🌐 API Routes
 
 All server routes live under `app/api/`.
 
-### `/api/opportunities`
+### `GET / POST / PATCH /api/opportunities`
 
-- `GET` returns seeded opportunities with filters
-- `POST` adds a scraped opportunity
-- `PATCH` updates `matchScore` and `matchReason`
+| Method | Behavior |
+|---|---|
+| `GET` | Returns seeded opportunities, with optional filters applied |
+| `POST` | Adds a newly scraped opportunity to the in-memory store |
+| `PATCH` | Updates `matchScore` / `matchReason` on existing opportunities |
 
-### `/api/chat`
+### `POST /api/chat`
 
-- `POST` accepts `messages` and returns a Gemini response
-- If `GEMINI_API_KEY` is missing, returns a demo fallback message
+- Accepts `messages` (conversation history)
+- Returns a Gemini-generated response
+- Falls back to a demo message if `GEMINI_API_KEY` is missing
 
-### `/api/match`
+### `POST /api/match`
 
-- `POST` accepts `profile`
+- Accepts a `profile` object
 - Calls `generateMatchScores()` in `lib/gemini.ts`
 - Returns ranked opportunities with `matchScore` and `matchReason`
 - Falls back to simulated scores when the Gemini key is missing
 
-### `/api/scrape`
+### `POST /api/scrape`
 
-- `POST` accepts `url` and optional `category`
-- Uses `lib/anakin.ts` to scrape markdown
-- Uses Gemini extraction to parse structured opportunities
+- Accepts `url` and an optional `category`
+- Uses `lib/anakin.ts` to scrape markdown content
+- Uses Gemini extraction to parse structured opportunity objects
 
-### `/api/notifications`
+### `GET /api/notifications`
 
-- `GET` returns a daily digest and deadline notifications
+- Returns a daily digest plus active deadline notifications
 
 ---
 
-## 🤖 AI integration
+## 🤖 AI Integration
 
-Gemini logic lives in `lib/gemini.ts`.
+All Gemini logic is centralized in `lib/gemini.ts`.
 
 ### `callGemini()`
 
-- Sends requests to `gemini-1.5-flash`
-- Uses `temperature: 0.7`, `topK: 40`, `topP: 0.95`, `maxOutputTokens: 4096`
-- Handles API errors and returns model text
+- Core request wrapper, targets `gemini-1.5-flash`
+- Generation config: `temperature: 0.7`, `topK: 40`, `topP: 0.95`, `maxOutputTokens: 4096`
+- Handles API errors and unwraps model text from the response
 
 ### `generateMatchScores()`
 
-- Formats profile and opportunity data into a structured prompt
-- Expects JSON output with `id`, `score`, and `reason`
-- Falls back to simulated scores when parsing fails
+- Formats the user profile + opportunity list into a structured prompt
+- Expects strict JSON output: `{ id, score, reason }[]`
+- Falls back to simulated scores if parsing fails
 
 ### `chatWithAssistant()`
 
-- Builds a system instruction containing opportunity context
-- Sends the conversation to Gemini
-- Returns markdown-ready text
+- Builds a system instruction containing live opportunity context
+- Sends the full conversation to Gemini
+- Returns markdown-ready text for `react-markdown` rendering
 
 ### `extractOpportunitiesFromMarkdown()`
 
-- Parses scraped markdown into structured opportunity objects
-- Returns `[]` if no valid JSON is found
+- Parses scraped markdown into structured `Opportunity` objects
+- Returns `[]` when no valid JSON array is found in the response
+
+> See [`prompt.md`](./prompt.md) for the full prompt structures and fallback behavior.
 
 ---
 
-## 🗃️ Data handling
+## 🗃️ Data Handling
 
-The app uses seeded data from `data/seed-opportunities.json`.
+The app ships with seeded data in `data/seed-opportunities.json`.
 
-- `app/api/opportunities/route.ts` manages an in-memory `opportunitiesDB`
-- `computeUrgency()` sets `isUrgent` flags based on deadlines
+- `app/api/opportunities/route.ts` manages an **in-memory** `opportunitiesDB`
+- `computeUrgency()` sets `isUrgent` flags based on each opportunity's deadline
 - Data resets on server restart or hot reload
 
-> For production, replace the in-memory dataset with a persistent database.
+> ⚠️ For production, replace the in-memory dataset with a persistent database.
 
 ---
 
-## 🏪 Client state
+## 🏪 Client State
 
-`lib/store.ts` defines the Zustand store.
+`lib/store.ts` defines the global Zustand store.
 
-Persisted slices:
-
-- `savedIds`
-- `userProfile`
-- `chatMessages`
-- `notifications`
-- `theme`
-
-Transient state:
-
-- `opportunities`
-- `filters`
-- `isScrapingActive`
+| Persisted (localStorage) | Transient (session-only) |
+|---|---|
+| `savedIds` | `opportunities` |
+| `userProfile` | `filters` |
+| `chatMessages` | `isScrapingActive` |
+| `notifications` | |
+| `theme` | |
 
 ---
 
-## 📌 UI components
+## 📌 UI Components
 
 ### `OpportunityCard`
 
-- Displays category badge, match score, deadline, and save action
-- Uses `MatchScore` and `CountdownTimer`
-- Applies urgency styling for deadlines within 7 days
+- Displays category badge, match score, deadline, and a save action
+- Composes `MatchScore` and `CountdownTimer`
+- Applies urgency styling when the deadline is within 7 days
 
 ### `ChatInterface`
 
 - Sends chat history to `/api/chat`
-- Renders reply text with `react-markdown`
-- Shows loading state and suggested prompts
+- Renders the reply with `react-markdown`
+- Shows a loading state and suggested starter prompts
 
 ### `DeadlineWidget`
 
-- Displays upcoming deadlines and progress bars
-- Highlights urgent opportunities with red/orange indicators
+- Displays upcoming deadlines with progress bars
+- Highlights urgent opportunities using red/orange indicators
 
 ---
 
-## 🔁 Data flow
+## 🔁 Data Flow Summary
 
-1. `Dashboard` fetches `/api/opportunities` and `/api/notifications`
-2. `Profile` submission triggers `/api/match`
-3. `Chat` sends messages to `/api/chat`
-4. `Scrape` requests `/api/scrape` and receives structured opportunities
+1. **Dashboard** fetches `/api/opportunities` and `/api/notifications` on load
+2. **Profile** submission triggers `/api/match` to compute AI scores
+3. **Chat** sends messages to `/api/chat` for assistant replies
+4. **Scrape** posts a URL to `/api/scrape` and receives structured opportunities back
 
 ---
 
-## ⚙️ Deployment notes
+## ⚙️ Deployment Notes
 
-- Add `GEMINI_API_KEY` and optionally `ANAKIN_API_KEY` in `.env.local`
+- Add `GEMINI_API_KEY` and optionally `ANAKIN_API_KEY` as environment variables (`.env.local` locally, or your host's dashboard in production)
 - Build with `npm run build`
 - Start with `npm run start`
-- Use a real database in production
+- Currently deployed on **Netlify**, configured via `netlify.toml`
+- Replace the in-memory data store with a real database before scaling to production traffic

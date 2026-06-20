@@ -1,6 +1,28 @@
-﻿# 🎨 Design System — Opportunity Radar AI
+# 🎨 Design System — Opportunity Radar AI
 
 A reference guide for the product's visual system, component patterns, and theming.
+
+**Live app:** [opportunity-radar-ai.netlify.app/dashboard](https://opportunity-radar-ai.netlify.app/dashboard)
+
+---
+
+## 📖 Table of Contents
+
+- [Design Philosophy](#-design-philosophy)
+- [Color Palette](#-color-palette)
+- [Typography](#️-typography)
+- [Component Patterns](#-component-patterns)
+- [Background Effects](#-background-effects)
+- [Animations](#-animations)
+- [Layout](#-layout)
+- [Theming](#-theming)
+- [Design Principles](#-design-principles)
+
+---
+
+## 🌌 Design Philosophy
+
+Opportunity Radar AI uses a **dark-first glassmorphism** aesthetic — translucent layered cards, soft glows, and an indigo-to-cyan brand gradient — designed to feel modern, calm, and information-dense without feeling cluttered. Urgency (deadlines) is communicated through color, not noise.
 
 ---
 
@@ -8,11 +30,11 @@ A reference guide for the product's visual system, component patterns, and themi
 
 ### Brand gradient
 
-| Token | Value | Usage |
-|---|---|---|
-| `#6366F1` | Indigo 500 | Primary brand accent |
-| `#8B5CF6` | Violet 500 | Gradient endpoint |
-| `#22D3EE` | Cyan 400 | Accent highlights |
+| Swatch | Token | Value | Usage |
+|---|---|---|---|
+| 🟣 | Indigo 500 | `#6366F1` | Primary brand accent |
+| 🟪 | Violet 500 | `#8B5CF6` | Gradient endpoint |
+| 🔵 | Cyan 400 | `#22D3EE` | Accent highlights |
 
 ### Semantic tokens
 
@@ -27,33 +49,33 @@ A reference guide for the product's visual system, component patterns, and themi
 
 ### Category colors
 
-| Category | Color |
-|---|---|
-| Hackathon | `#C084FC` |
-| Internship | `#60A5FA` |
-| Scholarship | `#FBBF24` |
-| Fellowship | `#2DD4BF` |
-| Open-source | `#4ADE80` |
-| Startup | `#FB923C` |
-| Competition | `#F472B6` |
-| Grant | `#818CF8` |
+| Category | Swatch | Color |
+|---|---|---|
+| Hackathon | 🟣 | `#C084FC` |
+| Internship | 🔵 | `#60A5FA` |
+| Scholarship | 🟡 | `#FBBF24` |
+| Fellowship | 🟢 | `#2DD4BF` |
+| Open-source | 🟢 | `#4ADE80` |
+| Startup | 🟠 | `#FB923C` |
+| Competition | 🌸 | `#F472B6` |
+| Grant | 🔷 | `#818CF8` |
 
-### Score colors
+### Match score colors
 
-| Range | Color |
-|---|---|
-| `70+` | `#4ADE80` |
-| `40–69` | `#FBBF24` |
-| `<40` | `#94A3B8` |
+| Range | Color | Meaning |
+|---|---|---|
+| `70+` | `#4ADE80` | Strong match |
+| `40–69` | `#FBBF24` | Moderate match |
+| `<40` | `#94A3B8` | Weak match |
 
-### Deadline urgency
+### Deadline urgency colors
 
-| Days left | Color |
-|---|---|
-| `0–1` | `#EF4444` |
-| `2–3` | `#F97316` |
-| `4–7` | `#F59E0B` |
-| `8+` | `#4ADE80` |
+| Days left | Color | Meaning |
+|---|---|---|
+| `0–1` | `#EF4444` | Critical — apply now |
+| `2–3` | `#F97316` | Urgent |
+| `4–7` | `#F59E0B` | Approaching |
+| `8+` | `#4ADE80` | Plenty of time |
 
 ---
 
@@ -65,7 +87,7 @@ A reference guide for the product's visual system, component patterns, and themi
 | Body | Inter | 400–500 | 13px–16px |
 | Labels | Inter | 600 | 11px–12px |
 
-Gradient headlines use:
+Gradient headlines:
 
 ```css
 background: linear-gradient(135deg, #6366F1, #22D3EE);
@@ -79,27 +101,33 @@ background: linear-gradient(135deg, #6366F1, #22D3EE);
 
 ### Glass cards
 
-- `background: var(--bg-card)`
-- `backdrop-filter: blur(20px)`
-- `border: 1px solid var(--border-subtle)`
-- `border-radius: 16px`
-- hover lift + subtle glow
+```css
+background: var(--bg-card);
+backdrop-filter: blur(20px);
+border: 1px solid var(--border-subtle);
+border-radius: 16px;
+```
+
+- Hover lift + subtle glow on interaction
 
 ### Buttons
 
-- `.btn-primary` uses a brand gradient fill
-- `.btn-secondary` uses glassy fill and subtle border
-- All buttons use `inline-flex`, `gap`, and motion transitions
+| Variant | Style |
+|---|---|
+| `.btn-primary` | Brand gradient fill, high contrast |
+| `.btn-secondary` | Glassy fill with a subtle border |
+
+- All buttons use `inline-flex`, consistent `gap`, and motion transitions on hover/press
 
 ### Badges
 
-- Pill-shaped badges with category color variants
-- Uppercase label text and compact sizing
+- Pill-shaped, with category-specific color variants
+- Uppercase label text, compact sizing for scannability
 
 ### Inputs
 
-- Glass background with brand focus ring
-- Rounded corners and low contrast border
+- Glass background with a brand-colored focus ring
+- Rounded corners, low-contrast resting border
 
 ---
 
@@ -107,13 +135,15 @@ background: linear-gradient(135deg, #6366F1, #22D3EE);
 
 ### Floating orbs
 
-- Purple orb: top-left, large blur, subtle opacity
-- Cyan orb: bottom-right, soft glow
+| Orb | Position | Style |
+|---|---|---|
+| Purple orb | Top-left | Large blur radius, subtle opacity |
+| Cyan orb | Bottom-right | Soft glow |
 
 ### Scrollbar
 
 - Custom narrow scrollbar
-- Transparent track and indigo thumb
+- Transparent track with an indigo thumb
 
 ---
 
@@ -121,13 +151,13 @@ background: linear-gradient(135deg, #6366F1, #22D3EE);
 
 | Element | Trigger | Pattern |
 |---|---|---|
-| Page cards | mount | `opacity 0→1`, `y 20→0` |
-| Lists | render | staggered motion |
-| Deadline progress | animation | easing fill |
-| Hover lift | pointer | subtle translate |
-| Chat transitions | conversation | markdown rendering |
+| Page cards | Mount | `opacity 0→1`, `y 20→0` |
+| Lists | Render | Staggered motion |
+| Deadline progress | Animation | Easing fill |
+| Hover lift | Pointer | Subtle translate |
+| Chat transitions | Conversation | Markdown rendering with fade-in |
 
-Key CSS animations:
+Key CSS keyframes:
 
 ```css
 @keyframes urgentPulse {
@@ -145,26 +175,27 @@ Key CSS animations:
 
 ## 📐 Layout
 
-- Sidebar + fluid main page layout
-- Dashboard uses a two-column grid
-- Opportunity cards use responsive grid with minimum width
-- Mobile stacks sections vertically
+- Persistent sidebar + fluid main content area
+- Dashboard uses a two-column responsive grid
+- Opportunity cards use a responsive grid with a minimum tile width
+- Mobile breakpoints stack all sections vertically
 
 ---
 
 ## 🌓 Theming
 
-The app uses `ThemeProvider` to set `data-theme="light"` on `<html>`.
+The app uses a `ThemeProvider` that sets `data-theme="light"` (or omits it for dark) on `<html>`.
 
-- Default is dark mode
-- Theme state persists in Zustand under `opportunity-radar-store`
+- **Default:** dark mode
+- Theme preference persists in the Zustand store under the `opportunity-radar-store` key
+- All color tokens are CSS variables, so theme switching requires no component-level logic
 
 ---
 
-## 🎯 Design principles
+## 🎯 Design Principles
 
-1. Use depth from glassmorphism, not heavy shadows
-2. Make urgency visible with red/orange/green cues
-3. Keep motion purposeful and informative
-4. Keep visual intensity low so content stands out
-5. Use consistent radius values throughout the UI
+1. **Depth from glass, not shadow** — use translucency and blur instead of heavy drop shadows
+2. **Make urgency visible** — red/orange/green cues communicate deadline pressure at a glance
+3. **Purposeful motion** — animation should inform state changes, never distract
+4. **Low visual noise** — keep background intensity subdued so content stays the focus
+5. **Consistent geometry** — use a single, repeated radius scale across all UI elements
