@@ -4,10 +4,11 @@ import { motion } from 'framer-motion';
 import { useOpportunityStore } from '@/lib/store';
 import { Opportunity, OpportunityCategory } from '@/types';
 import { getDaysUntilDeadline, getDeadlineStatus } from '@/lib/matching';
-import { ExternalLink, Bookmark, BookmarkCheck, Clock, MapPin, Trophy, Award } from 'lucide-react';
+import { ExternalLink, Bookmark, BookmarkCheck, Clock, MapPin, Trophy, Award, Zap } from 'lucide-react';
 import { CountdownTimer } from '@/components/ui/CountdownTimer';
 import { MatchScore } from '@/components/ui/MatchScore';
 import toast from 'react-hot-toast';
+import { useState } from 'react';
 
 interface OpportunityCardProps {
   opportunity: Opportunity;
@@ -37,6 +38,8 @@ export function OpportunityCard({
   const saved = isSaved(opportunity.id);
   const daysLeft = getDaysUntilDeadline(opportunity.deadline);
   const deadlineStatus = getDeadlineStatus(opportunity.deadline);
+  const [applyHovered, setApplyHovered] = useState(false);
+  const [applyPressed, setApplyPressed] = useState(false);
 
   const deadlineColor =
     deadlineStatus === 'critical'
@@ -53,6 +56,17 @@ export function OpportunityCard({
     toast(saved ? 'Removed from saved' : '✨ Saved!', {
       icon: saved ? '🗑️' : '🔖',
     });
+  };
+
+  const handleApply = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (opportunity.applicationLink) {
+      window.open(opportunity.applicationLink, '_blank', 'noopener,noreferrer');
+      toast.success('Opening application page...', { icon: '🚀', duration: 2000 });
+    } else {
+      toast.error('No application link available');
+    }
   };
 
   return (
@@ -274,24 +288,64 @@ export function OpportunityCard({
               </span>
             </div>
           )}
-          <a
-            href={opportunity.applicationLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="btn-primary"
+          <motion.button
+            onClick={handleApply}
+            onHoverStart={() => setApplyHovered(true)}
+            onHoverEnd={() => setApplyHovered(false)}
+            onTapStart={() => setApplyPressed(true)}
+            onTap={() => setApplyPressed(false)}
+            onTapCancel={() => setApplyPressed(false)}
+            whileHover={{ scale: 1.06, y: -1 }}
+            whileTap={{ scale: 0.96 }}
+            disabled={deadlineStatus === 'expired'}
             style={{
-              padding: '8px 16px',
+              position: 'relative',
+              padding: '8px 18px',
               fontSize: '12px',
+              fontWeight: '700',
               borderRadius: '10px',
+              border: 'none',
+              cursor: deadlineStatus === 'expired' ? 'not-allowed' : 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              textDecoration: 'none',
+              overflow: 'hidden',
+              background: deadlineStatus === 'expired'
+                ? 'rgba(100,116,139,0.2)'
+                : applyHovered
+                  ? 'linear-gradient(135deg, #818CF8, #6366F1, #22D3EE)'
+                  : 'linear-gradient(135deg, #6366F1, #8B5CF6)',
+              color: deadlineStatus === 'expired' ? '#64748B' : 'white',
+              boxShadow: deadlineStatus === 'expired'
+                ? 'none'
+                : applyHovered
+                  ? '0 0 20px rgba(99,102,241,0.6), 0 4px 15px rgba(99,102,241,0.4)'
+                  : '0 2px 8px rgba(99,102,241,0.3)',
+              transition: 'background 0.3s ease, box-shadow 0.3s ease',
+              letterSpacing: '0.3px',
+              zIndex: 2,
             }}
           >
-            Apply now <ExternalLink size={11} />
-          </a>
+            {/* Shimmer overlay */}
+            {deadlineStatus !== 'expired' && (
+              <motion.span
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.25) 50%, transparent 60%)',
+                  backgroundSize: '200% 100%',
+                  pointerEvents: 'none',
+                }}
+                animate={applyHovered ? { backgroundPosition: ['200% 0', '-200% 0'] } : {}}
+                transition={{ duration: 0.6, ease: 'easeInOut' }}
+              />
+            )}
+            {deadlineStatus === 'expired' ? (
+              <><Clock size={11} /> Expired</>
+            ) : (
+              <><Zap size={11} /> Apply Now <ExternalLink size={10} /></>
+            )}
+          </motion.button>
         </div>
       </div>
     </motion.div>
